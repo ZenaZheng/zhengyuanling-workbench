@@ -228,6 +228,16 @@ input, select, textarea {
   opacity: 0.95;
 }
 
+.sidebar-streak {
+  font-size: var(--font-sm);
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-full);
+  padding: 6px 14px;
+  margin: 6px auto var(--spacing-sm);
+  display: inline-block;
+}
+
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;
@@ -1379,6 +1389,7 @@ input, select, textarea {
     <div class="sidebar-header">
       <div class="avatar">👧</div>
       <div class="username">郑圆玲</div>
+      <div class="sidebar-streak">🔥 连续打卡 <span id="sidebarStreak">0</span> 天</div>
       <div class="sidebar-tagline">加油，今天也要元气满满 🌸</div>
     </div>
     <nav class="sidebar-nav">
@@ -1894,6 +1905,41 @@ input, select, textarea {
       Store.set('daily_quote', { index: Utils.randInt(0, CONFIG.QUOTES.length - 1), date: today });
 
       // 任务打卡清空（旧 key 留着即可，新一天自动用新 key）
+    },
+
+    // ========== 连续打卡 ==========
+    /** 记录某天已打卡（默认今天），重复调用不会重复添加 */
+    recordCheckin(date) {
+      const key = date || Utils.todayKey();
+      const history = Store.get('checkin_history', []);
+      if (!history.includes(key)) {
+        history.push(key);
+        history.sort();
+        Store.set('checkin_history', history);
+      }
+    },
+
+    /** 获取今天是否已打卡 */
+    hasCheckedInToday() {
+      return Store.get('checkin_history', []).includes(Utils.todayKey());
+    },
+
+    /** 计算连续打卡天数（从今天往前推，允许今天未打卡但昨天必须打过才算连续） */
+    getCheckinStreak() {
+      const history = Store.get('checkin_history', []);
+      const set = new Set(history);
+      let streak = 0;
+      // 从今天或昨天开始：如果今天已经打卡，从0开始；否则从-1开始检查昨天
+      let offset = set.has(Utils.todayKey()) ? 0 : -1;
+      // 只有昨天打过卡，才继续往前数（防止今天没打就显示0）
+      if (offset === -1 && !set.has(Utils.addDays(Utils.todayKey(), -1))) {
+        return 0;
+      }
+      while (set.has(Utils.addDays(Utils.todayKey(), offset))) {
+        streak++;
+        offset--;
+      }
+      return streak;
     },
 
     // ========== 今日任务 ==========
@@ -3175,6 +3221,10 @@ input, select, textarea {
       view.innerHTML = route.render();
       setTopbarDate();
 
+      // 更新侧边栏连续打卡天数
+      const streakEl = document.getElementById('sidebarStreak');
+      if (streakEl) streakEl.textContent = Store.getCheckinStreak();
+
       // 路由链接 - 点击卡片跳转
       view.querySelectorAll('[data-route-link]').forEach(el => {
         el.addEventListener('click', (e) => {
@@ -3372,6 +3422,7 @@ input, select, textarea {
           case 'shellbean-checkin':
           case 'shellbean-checkin-page': {
             if (Store.doShellbeanCheckin()) {
+              Store.recordCheckin();
               showToast('🐚 扇贝打卡成功！');
               Router.handle();
             }
@@ -3381,6 +3432,7 @@ input, select, textarea {
             const name = target.dataset.name;
             const result = Store.toggleTask(name);
             if (result.newChecked) {
+              Store.recordCheckin();
               // 任务完成 ✅ -> 自动喂食小鱼干
               const fed = Store.feedCatOnTask();
               if (fed.fed) {
@@ -3423,7 +3475,8 @@ input, select, textarea {
             const idx = parseInt(target.dataset.idx);
             const poses = Store.getYogaPoses();
             const name = poses[idx].name;
-            Store.toggleYogaPose(name);
+            const r = Store.toggleYogaPose(name);
+            if (r === true) Store.recordCheckin();
             Router.handle();
             break;
           }
@@ -3446,6 +3499,7 @@ input, select, textarea {
             const name = target.dataset.name;
             const r = Store.toggleStudyTask(name);
             if (r.newChecked) {
+              Store.recordCheckin();
               const fed = Store.feedCatOnTask();
               if (fed.fed) {
                 showFeedAnimation('🐟');
@@ -3485,7 +3539,8 @@ input, select, textarea {
           case 'toggle-health': {
             const idx = parseInt(target.dataset.idx);
             const tasks = Store.getHealthTasks();
-            Store.toggleHealthTask(tasks[idx].name);
+            const r = Store.toggleHealthTask(tasks[idx].name);
+            if (r === true) Store.recordCheckin();
             Router.handle();
             break;
           }
