@@ -902,7 +902,7 @@
       return Store.get('cat_data', { totalFeed: 0, todayFeed: 0, todayFeedDate: Utils.todayKey(), totalTasks: 0, fishCount: 0 });
     },
 
-    /** 任务完成时调用：喂猫 +1（每日上限），返回 { fed, leveledUp, newStageName } */
+    /** 任务完成时调用：直接喂猫 +1（每日上限），返回 { fed, leveledUp, newStageName } */
     feedCatOnTask() {
       const cat = Store.getCatData();
       const today = Utils.todayKey();
@@ -915,7 +915,6 @@
         cat.todayFeed += 1;
         cat.totalFeed = (cat.totalFeed || 0) + 1;
         cat.totalTasks = (cat.totalTasks || 0) + 1;
-        cat.fishCount = (cat.fishCount || 0) + 1; // 当前猫粮 +1
         const newStage = Store.getCatStageIndex(cat.totalFeed);
         Store.set('cat_data', cat);
         return {
@@ -937,32 +936,10 @@
         cat.todayFeed -= 1;
         cat.totalFeed -= 1;
         cat.totalTasks -= 1;
-        cat.fishCount = Math.max(0, (cat.fishCount || 0) - 1);
         Store.set('cat_data', cat);
         return true;
       }
       return false;
-    },
-
-    /** 手动点击"喂团团"按钮：消耗 1 个小鱼干，+1 累计喂食，返回 { fed, leveledUp, newStageName } */
-    feedCatNow() {
-      const cat = Store.getCatData();
-      if ((cat.fishCount || 0) <= 0) return { fed: false, leveledUp: false };
-      const oldStage = Store.getCatStageIndex(cat.totalFeed || 0);
-      cat.fishCount -= 1;
-      cat.totalFeed = (cat.totalFeed || 0) + 1;
-      cat.totalTasks = (cat.totalTasks || 0) + 1;
-      // 饱食度也加一格（按 0~5 映射）
-      cat.todayFeed = Math.min(CONFIG.CAT_FEED_DAILY_LIMIT, (cat.todayFeed || 0) + 1);
-      cat.todayFeedDate = Utils.todayKey();
-      const newStage = Store.getCatStageIndex(cat.totalFeed);
-      Store.set('cat_data', cat);
-      return {
-        fed: true,
-        leveledUp: newStage > oldStage,
-        newStageName: CONFIG.CAT_STAGES[newStage].name,
-        newStageEmoji: CONFIG.CAT_STAGES[newStage].emoji
-      };
     },
 
     /** 根据 totalFeed 返回阶段索引（0-5） */
@@ -1581,9 +1558,6 @@
     // 心情值 = 累计喂食进度（按 0~100 算）
     const mood = Math.min(100, (cat.totalFeed || 0));
 
-    // 当前猫粮 = 累计喂食次数（小鱼干🐟）
-    const fishCount = cat.fishCount || 0;
-
     // 获取阶段信息和对应 SVG
     const stageInfo = Store.getCatStage();
     const catSVG = CONFIG.CAT_STAGE_SVGS[stageInfo.stageIndex] || CONFIG.CAT_STAGE_SVGS[0];
@@ -1648,16 +1622,18 @@
         </div>
 
         <div class="fish-card">
-          <div class="fish-card-label">当前猫粮</div>
+          <div class="fish-card-label">今日喂食</div>
           <div class="fish-card-value">
-            <span class="fish-count">${fishCount}</span>
-            <span class="fish-emoji">🐟</span>
+            <span class="fish-count">${cat.todayFeed || 0}</span>
+            <span class="fish-emoji">/${CONFIG.CAT_FEED_DAILY_LIMIT} 🐟</span>
           </div>
         </div>
 
         <div class="total-feed">已累计喂食 <span style="color: var(--color-primary-dark); font-weight: 700">${cat.totalFeed || 0}</span> 次</div>
 
-        <button class="feed-btn" data-action="feed-cat-now">🍖 喂团团</button>
+        <div style="text-align:center; font-size: var(--font-xs); color: var(--color-text-secondary); padding: var(--spacing-sm) var(--spacing-md);">
+          💡 完成今日任务即可自动喂团团，每日最多 ${CONFIG.CAT_FEED_DAILY_LIMIT} 次
+        </div>
       </div>
     `;
   };
@@ -1909,11 +1885,11 @@
                 if (fed.leveledUp) {
                   showToast('🎉 团团升级了！现在是【' + fed.newStageEmoji + ' ' + fed.newStageName + '】！');
                 } else {
-                  showToast('✅ 任务完成！🐟 +1 小鱼干已喂给团团！');
+                  showToast('✅ 任务完成！团团已吃饱一次~');
                 }
               } else {
                 showFeedAnimation('🐟');
-                showToast('✅ 任务完成！（今日喂食已满 5 次）');
+                showToast('✅ 任务完成！（团团今日已经吃饱啦）');
               }
             } else {
               Store.unfedCatOnTask();
@@ -1973,11 +1949,11 @@
                 if (fed.leveledUp) {
                   showToast('🎉 团团升级了！现在是【' + fed.newStageEmoji + ' ' + fed.newStageName + '】！');
                 } else {
-                  showToast('✅ 学习任务完成！🐟 +1 小鱼干');
+                  showToast('✅ 学习任务完成！团团已吃饱一次~');
                 }
               } else {
                 showFeedAnimation('🐟');
-                showToast('✅ 学习任务完成！（今日喂食已满）');
+                showToast('✅ 学习任务完成！（团团今日已经吃饱啦）');
               }
             } else {
               Store.unfedCatOnTask();
@@ -2124,17 +2100,8 @@
             Router.handle();
             break;
           case 'feed-cat-now': {
-            const fr = Store.feedCatNow();
-            if (fr.fed) {
-              showFeedAnimation();
-              if (fr.leveledUp) {
-                showToast('🎉 团团升级了！现在是【' + fr.newStageEmoji + ' ' + fr.newStageName + '】！');
-              } else {
-                showToast('🐟 团团吃饱啦！');
-              }
-            } else {
-              showToast('🐟 小鱼干不够啦，先去完成任务攒猫粮！');
-            }
+            // 已移除手动喂团团按钮，完成任务即自动喂食，此处保留以防旧缓存触发
+            showToast('💡 完成任务即可自动喂团团哦~');
             Router.handle();
             break;
           }

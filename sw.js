@@ -1,5 +1,5 @@
 // 郑圆玲的工作台 - Service Worker (离线缓存)
-const CACHE_NAME = 'zhyl-workbench-v2';
+const CACHE_NAME = 'zhyl-workbench-v3';
 const ASSETS = [
   './',
   './index.html',
