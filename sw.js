@@ -1,5 +1,5 @@
 // 郑圆玲的工作台 - Service Worker (离线缓存)
-const CACHE_NAME = 'zhyl-workbench-v1';
+const CACHE_NAME = 'zhyl-workbench-v2';
 const ASSETS = [
   './',
   './index.html',
@@ -50,4 +50,11 @@ self.addEventListener('fetch', (event) => {
         });
       })
   );
+});
+
+// 接收主线程消息，立即跳过 waiting 状态
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
