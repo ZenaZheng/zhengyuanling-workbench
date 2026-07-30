@@ -1459,9 +1459,21 @@ input, select, textarea {
      ============================================ */
   const CONFIG = {
     STORAGE_PREFIX: 'zhyl_',
-    COUNTDOWN_TARGET: '2026-12-19', // 倒计时目标日
+    COUNTDOWN_TARGET: '2026-12-19', // 倒计时目标日（默认值，可被 localStorage 覆盖）
     COUNTDOWN_LABEL: '目标日',
     CAT_NAME: '团团',
+
+    // 获取当前生效的倒计时目标日（用户可在页面自行修改，保存在 localStorage）
+    getCountdownTarget() {
+      const saved = Store && Store.get ? Store.get('countdown_target', null) : null;
+      if (saved && /^\d{4}-\d{2}-\d{2}$/.test(saved)) return saved;
+      return CONFIG.COUNTDOWN_TARGET;
+    },
+    // 获取进度条起始日（目标日所在年的 1 月 1 日）
+    getCountdownStart() {
+      const target = CONFIG.getCountdownTarget();
+      return target.slice(0, 4) + '-01-01';
+    },
     CAT_FEED_DAILY_LIMIT: 5, // 每日喂食上限
 
     // 小尺寸橘猫头像（用于卡片标题图标，28x28 视图）
@@ -1975,7 +1987,7 @@ input, select, textarea {
 
     // ========== 倒计时 ==========
     getCountdownDays() {
-      const target = new Date(CONFIG.COUNTDOWN_TARGET + 'T00:00:00');
+      const target = new Date(CONFIG.getCountdownTarget() + 'T00:00:00');
       const now = new Date();
       now.setHours(0,0,0,0);
       const diff = Math.round((target - now) / 86400000);
@@ -1983,10 +1995,9 @@ input, select, textarea {
     },
 
     getCountdownProgress() {
-      // 从"30 天前"开始算进度（参考图中 142/10000 这种长度的进度条）
-      // 这里我们按总生命周期：2026-01-01 ~ 2026-12-19
-      const start = new Date('2026-01-01T00:00:00');
-      const target = new Date(CONFIG.COUNTDOWN_TARGET + 'T00:00:00');
+      // 按总生命周期：目标日所在年的 1 月 1 日 ~ 目标日
+      const start = new Date(CONFIG.getCountdownStart() + 'T00:00:00');
+      const target = new Date(CONFIG.getCountdownTarget() + 'T00:00:00');
       const now = new Date();
       now.setHours(0,0,0,0);
       const total = target - start;
@@ -2484,7 +2495,7 @@ input, select, textarea {
         <div class="stat-row stat-row-2">
           <div class="stat-card">
             <div class="stat-value stat-value-large">${countdownDays >= 0 ? countdownDays : 0}</div>
-            <div class="stat-label">距离 ${CONFIG.COUNTDOWN_TARGET.replace(/-/g, '/')}</div>
+            <div class="stat-label">距离 ${CONFIG.getCountdownTarget().replace(/-/g, '/')}</div>
           </div>
           <div class="stat-card">
             <div class="stat-value stat-value-large">${Store.getCountdownProgress()}%</div>
@@ -2985,8 +2996,11 @@ input, select, textarea {
   Views.renderCountdown = function () {
     const days = Store.getCountdownDays();
     const progress = Store.getCountdownProgress();
-    const target = CONFIG.COUNTDOWN_TARGET;
+    const target = CONFIG.getCountdownTarget();
+    const startStr = CONFIG.getCountdownStart();
     const formatted = target.slice(0, 4) + '/' + target.slice(5, 7) + '/' + target.slice(8, 10);
+    const startFormatted = startStr.slice(0, 4) + '/' + startStr.slice(5, 7) + '/' + startStr.slice(8, 10);
+    const isCustom = target !== CONFIG.COUNTDOWN_TARGET;
 
     return `
       <div class="countdown-hero">
@@ -3005,7 +3019,7 @@ input, select, textarea {
           <div class="progress-bar-fill" style="width: ${progress}%"></div>
         </div>
         <div style="display:flex; justify-content:space-between; font-size: var(--font-xs); color: var(--color-text-secondary)">
-          <span>2026/01/01</span>
+          <span>${startFormatted}</span>
           <span>${progress}%</span>
           <span>${formatted}</span>
         </div>
@@ -3015,6 +3029,22 @@ input, select, textarea {
         <div style="font-size: 36px; margin-bottom: var(--spacing-sm)">🌟</div>
         <div style="font-size: var(--font-md); color: var(--color-text); font-weight: 500">
           ${days > 0 ? '还有 ' + days + ' 天，加油！' : days === 0 ? '就是今天！冲鸭！' : '目标日已过，给自己一个新的目标吧 🌸'}
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <span class="card-title-icon">✏️</span>
+          <span>修改目标日</span>
+        </div>
+        <div style="display:flex; gap:var(--spacing-sm); align-items:center; flex-wrap:wrap;">
+          <input type="date" id="countdownDateInput" value="${target}"
+            style="flex:1; min-width:140px; padding:10px 12px; border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-sm); background:var(--color-white); color:var(--color-text);">
+          <button class="btn btn-primary" data-action="save-countdown" style="padding:10px 18px; border:none; border-radius:var(--radius-md); background:var(--color-primary-gradient); color:#fff; font-size:var(--font-sm); font-weight:500; cursor:pointer;">💾 保存</button>
+          ${isCustom ? '<button data-action="reset-countdown" style="padding:10px 14px; border:1px solid var(--color-border); border-radius:var(--radius-md); background:var(--color-white); color:var(--color-text-secondary); font-size:var(--font-sm); cursor:pointer;">↺ 恢复默认</button>' : ''}
+        </div>
+        <div style="margin-top:var(--spacing-sm); font-size:var(--font-xs); color:var(--color-text-light);">
+          默认目标日：${CONFIG.COUNTDOWN_TARGET.replace(/-/g, '/')}
         </div>
       </div>
     `;
@@ -3597,6 +3627,24 @@ input, select, textarea {
             // 简单视觉切换，实际数据未变
             view.querySelectorAll('[data-action="study-tab"]').forEach(el => el.classList.remove('active'));
             target.classList.add('active');
+            break;
+          }
+          case 'save-countdown': {
+            const input = document.getElementById('countdownDateInput');
+            const val = (input.value || '').trim();
+            if (!val || !/^\d{4}-\d{2}-\d{2}$/.test(val)) {
+              showToast('请选择有效日期');
+              return;
+            }
+            Store.set('countdown_target', val);
+            showToast('✓ 目标日已更新为 ' + val.replace(/-/g, '/'));
+            Router.handle();
+            break;
+          }
+          case 'reset-countdown': {
+            Store.set('countdown_target', CONFIG.COUNTDOWN_TARGET);
+            showToast('↺ 已恢复默认目标日');
+            Router.handle();
             break;
           }
         }
