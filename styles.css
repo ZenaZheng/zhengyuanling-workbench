@@ -425,7 +425,7 @@ input, select, textarea {
 .btn-primary.disabled {
   background: var(--color-text-light);
   box-shadow: none;
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .btn-outline {

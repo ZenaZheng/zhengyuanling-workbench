@@ -1033,8 +1033,8 @@
             <div class="stat-label">累计天数</div>
           </div>
           <div class="stat-card" style="grid-column: span 2; display:flex; flex-direction:column; align-items:center; justify-content:center">
-            <button class="btn ${shellbeanChecked ? 'btn-primary disabled' : 'btn-primary'} btn-block" data-action="shellbean-checkin" ${shellbeanChecked ? 'disabled' : ''}>
-              ${shellbeanChecked ? '✓ 今日已打卡' : '🐚 今日打卡'}
+            <button class="btn ${shellbeanChecked ? 'btn-primary disabled' : 'btn-primary'} btn-block" data-action="shellbean-toggle">
+              ${shellbeanChecked ? '✓ 今日已打卡（取消）' : '🐚 今日打卡'}
             </button>
           </div>
         </div>
@@ -1484,8 +1484,8 @@
         <div class="shellbean-emoji">🐚</div>
         <div class="shellbean-days">${count}</div>
         <div class="shellbean-label">累计打卡天数</div>
-        <button class="btn ${checked ? 'btn-primary disabled' : 'btn-primary'}" style="margin-top: var(--spacing-md); background: white; color: var(--color-primary)" data-action="shellbean-checkin-page" ${checked ? 'disabled' : ''}>
-          ${checked ? '✓ 今日已打卡' : '🐚 今日打卡 +1'}
+        <button class="btn ${checked ? 'btn-primary disabled' : 'btn-primary'}" style="margin-top: var(--spacing-md); background: white; color: var(--color-primary)" data-action="shellbean-toggle">
+          ${checked ? '✓ 今日已打卡（点击取消）' : '🐚 今日打卡 +1'}
         </button>
       </div>
 
@@ -1867,10 +1867,17 @@
             Router.handle();
             break;
           case 'shellbean-checkin':
-          case 'shellbean-checkin-page': {
-            if (Store.doShellbeanCheckin()) {
-              showToast('🐚 扇贝打卡成功！');
+          case 'shellbean-checkin-page':
+          case 'shellbean-toggle': {
+            if (Store.isShellbeanCheckedToday()) {
+              Store.uncheckShellbeanToday();
+              showToast('已取消今日扇贝打卡');
               Router.handle();
+            } else {
+              if (Store.doShellbeanCheckin()) {
+                showToast('🐚 扇贝打卡成功！');
+                Router.handle();
+              }
             }
             break;
           }
