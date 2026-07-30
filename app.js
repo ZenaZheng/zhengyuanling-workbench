@@ -1878,18 +1878,17 @@
             const name = target.dataset.name;
             const result = Store.toggleTask(name);
             if (result.newChecked) {
-              // 任务完成 ✅ -> 自动喂食小鱼干
+              // 今日打卡每完成一个小任务 -> 喂团团一次小鱼干
               const fed = Store.feedCatOnTask();
+              showFeedAnimation('🐟');
               if (fed.fed) {
-                showFeedAnimation('🐟');
                 if (fed.leveledUp) {
                   showToast('🎉 团团升级了！现在是【' + fed.newStageEmoji + ' ' + fed.newStageName + '】！');
                 } else {
-                  showToast('✅ 任务完成！团团已吃饱一次~');
+                  showToast('✅ 打卡完成！🐟 +1 小鱼干喂给团团！');
                 }
               } else {
-                showFeedAnimation('🐟');
-                showToast('✅ 任务完成！（团团今日已经吃饱啦）');
+                showToast('✅ 打卡完成！（团团今日已经吃饱啦）');
               }
             } else {
               Store.unfedCatOnTask();
@@ -1943,20 +1942,7 @@
             const name = target.dataset.name;
             const r = Store.toggleStudyTask(name);
             if (r.newChecked) {
-              const fed = Store.feedCatOnTask();
-              if (fed.fed) {
-                showFeedAnimation('🐟');
-                if (fed.leveledUp) {
-                  showToast('🎉 团团升级了！现在是【' + fed.newStageEmoji + ' ' + fed.newStageName + '】！');
-                } else {
-                  showToast('✅ 学习任务完成！团团已吃饱一次~');
-                }
-              } else {
-                showFeedAnimation('🐟');
-                showToast('✅ 学习任务完成！（团团今日已经吃饱啦）');
-              }
-            } else {
-              Store.unfedCatOnTask();
+              showToast('✅ 学习任务完成！');
             }
             Router.handle();
             break;
