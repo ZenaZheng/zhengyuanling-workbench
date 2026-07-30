@@ -1367,6 +1367,11 @@ input, select, textarea {
 .gap-sm { gap: var(--spacing-sm); }
 .gap-md { gap: var(--spacing-md); }
 </style>
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="郑圆玲的工作台">
 </head>
 <body>
   <!-- 侧边栏（移动端抽屉式 / 桌面端常驻） -->
@@ -3687,6 +3692,14 @@ input, select, textarea {
     init();
   }
 })();
+</script>
+<script>
+// 注册 Service Worker (PWA 离线支持)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js').catch(function() {});
+  });
+}
 </script>
 </body>
 </html>
